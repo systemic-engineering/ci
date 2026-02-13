@@ -1,0 +1,96 @@
+name: 'Elixir Setup'
+description: 'Set up Elixir/OTP environment with intelligent caching'
+author: 'Reed <reed@systemic.engineer>'
+
+inputs:
+  elixir-version:
+    description: 'Elixir version (e.g., "1.17", "1.18")'
+    required: true
+  otp-version:
+    description: 'OTP version (e.g., "27.0", "26.2")'
+    required: true
+  alpine-version:
+    description: 'Alpine Linux version (e.g., "3.19", "3.20")'
+    required: false
+    default: '3.20'
+  mix-env:
+    description: 'MIX_ENV to use (dev, test, prod)'
+    required: false
+    default: 'test'
+  cache-prefix:
+    description: 'Cache key prefix for versioning'
+    required: false
+    default: 'v1'
+  cache-deps:
+    description: 'Enable deps/ caching'
+    required: false
+    default: 'true'
+  cache-build:
+    description: 'Enable _build/ caching'
+    required: false
+    default: 'true'
+  cache-dialyzer:
+    description: 'Enable .dialyzer/ PLT caching'
+    required: false
+    default: 'false'
+
+outputs:
+  cache-hit-deps:
+    description: 'Whether deps cache was hit'
+    value: ${{ steps.cache-deps.outputs.cache-hit }}
+  cache-hit-build:
+    description: 'Whether build cache was hit'
+    value: ${{ steps.cache-build.outputs.cache-hit }}
+  cache-hit-dialyzer:
+    description: 'Whether Dialyzer cache was hit'
+    value: ${{ steps.cache-dialyzer.outputs.cache-hit }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        otp-version: ${{ inputs.otp-version }}
+        elixir-version: ${{ inputs.elixir-version }}
+
+    - name: Cache deps/
+      if: inputs.cache-deps == 'true'
+      id: cache-deps
+      uses: actions/cache@v4
+      with:
+        path: deps/
+        key: ${{ inputs.cache-prefix }}-deps-env:${{ inputs.mix-env }}-elixir:${{ inputs.elixir-version }}-otp:${{ inputs.otp-version }}-${{ hashFiles('**/mix.lock') }}
+        restore-keys: |
+          ${{ inputs.cache-prefix }}-deps-env:${{ inputs.mix-env }}-elixir:${{ inputs.elixir-version }}-otp:${{ inputs.otp-version }}-
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        mix local.rebar --force
+        mix local.hex --force
+        mix deps.get --only "${{ inputs.mix-env }}"
+      env:
+        MIX_ENV: ${{ inputs.mix-env }}
+
+    - name: Cache _build/
+      if: inputs.cache-build == 'true'
+      id: cache-build
+      uses: actions/cache@v4
+      with:
+        path: _build/
+        key: ${{ inputs.cache-prefix }}-build-env:${{ inputs.mix-env }}-elixir:${{ inputs.elixir-version }}-otp:${{ inputs.otp-version }}-${{ hashFiles('**/mix.lock') }}
+        restore-keys: |
+          ${{ inputs.cache-prefix }}-build-env:${{ inputs.mix-env }}-elixir:${{ inputs.elixir-version }}-otp:${{ inputs.otp-version }}-
+
+    - name: Cache .dialyzer/
+      if: inputs.cache-dialyzer == 'true'
+      id: cache-dialyzer
+      uses: actions/cache@v4
+      with:
+        path: .dialyzer/
+        key: ${{ inputs.cache-prefix }}-dialyzer-elixir:${{ inputs.elixir-version }}-otp:${{ inputs.otp-version }}
+
+branding:
+  icon: 'package'
+  color: 'purple'

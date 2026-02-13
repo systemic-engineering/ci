@@ -1,0 +1,72 @@
+# Example: Multi-version matrix testing
+#
+# Place in: .github/workflows/ci.yml
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test (Elixir ${{ matrix.elixir }} / OTP ${{ matrix.otp }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Current stable
+          - elixir: "1.18"
+            otp: "27.0"
+          # Previous release
+          - elixir: "1.17"
+            otp: "27.0"
+          # Older OTP
+          - elixir: "1.17"
+            otp: "26.2"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: reed/ci/actions/elixir-setup@main
+        with:
+          elixir-version: ${{ matrix.elixir }}
+          otp-version: ${{ matrix.otp }}
+
+      - uses: reed/ci/actions/elixir-test@main
+
+  quality:
+    name: Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: reed/ci/actions/elixir-setup@main
+        with:
+          elixir-version: "1.18"
+          otp-version: "27.0"
+          mix-env: "dev"
+          cache-dialyzer: true
+
+      - uses: reed/ci/actions/elixir-quality@main
+        with:
+          dialyzer: true
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: reed/ci/actions/elixir-setup@main
+        with:
+          elixir-version: "1.18"
+          otp-version: "27.0"
+
+      - uses: reed/ci/actions/elixir-test@main
+        with:
+          coverage: true

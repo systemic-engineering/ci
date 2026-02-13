@@ -1,0 +1,90 @@
+name: Elixir CI (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      elixir-version:
+        description: 'Elixir version (e.g., "1.17", "1.18")'
+        required: false
+        type: string
+        default: '1.18'
+      otp-version:
+        description: 'OTP version (e.g., "27.0", "26.2")'
+        required: false
+        type: string
+        default: '27.0'
+      alpine-version:
+        description: 'Alpine version for container'
+        required: false
+        type: string
+        default: '3.20'
+      mix-env:
+        description: 'MIX_ENV to use'
+        required: false
+        type: string
+        default: 'test'
+      cache-prefix:
+        description: 'Cache key prefix'
+        required: false
+        type: string
+        default: 'v1'
+      run-tests:
+        description: 'Run tests'
+        required: false
+        type: boolean
+        default: true
+      run-coverage:
+        description: 'Collect coverage'
+        required: false
+        type: boolean
+        default: false
+      run-quality:
+        description: 'Run quality checks'
+        required: false
+        type: boolean
+        default: true
+      run-dialyzer:
+        description: 'Run Dialyzer'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  test:
+    if: inputs.run-tests
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/elixir-setup
+        with:
+          elixir-version: ${{ inputs.elixir-version }}
+          otp-version: ${{ inputs.otp-version }}
+          mix-env: ${{ inputs.mix-env }}
+          cache-prefix: ${{ inputs.cache-prefix }}
+
+      - uses: ./.github/actions/elixir-test
+        with:
+          mix-env: ${{ inputs.mix-env }}
+          coverage: ${{ inputs.run-coverage }}
+
+  quality:
+    if: inputs.run-quality
+    name: Quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/elixir-setup
+        with:
+          elixir-version: ${{ inputs.elixir-version }}
+          otp-version: ${{ inputs.otp-version }}
+          mix-env: 'dev'
+          cache-prefix: ${{ inputs.cache-prefix }}
+          cache-dialyzer: ${{ inputs.run-dialyzer }}
+
+      - uses: ./.github/actions/elixir-quality
+        with:
+          mix-env: 'dev'
+          dialyzer: ${{ inputs.run-dialyzer }}
