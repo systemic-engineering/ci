@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  workflow_call:
+    inputs:
+      check_command:
+        description: 'Command to run the quality gate'
+        required: false
+        default: 'just check'
+        type: string
+
+# OBC mapping:
+#   Observable: push / pull_request event
+#   Budget:     check_command exit code (0 = pass, non-zero = fail)
+#   on_pass:    status check green → PR unblocked
+#   on_fail:    status check red → PR blocked
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - name: Run quality gate
+        run: ${{ inputs.check_command }}

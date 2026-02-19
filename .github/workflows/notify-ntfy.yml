@@ -1,0 +1,41 @@
+name: Notify CI failure
+
+on:
+  workflow_call:
+    inputs:
+      repo:
+        description: 'Repository name (owner/repo)'
+        required: true
+        type: string
+      workflow:
+        description: 'Workflow name that failed'
+        required: true
+        type: string
+      run_url:
+        description: 'URL to the failed workflow run'
+        required: true
+        type: string
+    secrets:
+      NTFY_TOKEN:
+        description: 'Ntfy authentication token'
+        required: true
+
+# OBC mapping:
+#   This is the on_fail cascade — fires when the check job fails.
+#   Sends to Reed via Ntfy (se-ci topic) for triage.
+#   Reed triages, escalates to Alex if blocking.
+
+jobs:
+  notify:
+    name: notify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Ntfy alert
+        run: |
+          curl -s \
+            -H "Authorization: Bearer ${{ secrets.NTFY_TOKEN }}" \
+            -H "Title: CI failure: ${{ inputs.repo }}" \
+            -H "Priority: high" \
+            -H "Tags: x,rotating_light" \
+            -d "${{ inputs.workflow }} failed. ${{ inputs.run_url }}" \
+            https://ntfy.sh/se-ci

@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  workflow_call:
+    inputs:
+      elixir_version:
+        description: 'Elixir version'
+        required: false
+        default: '1.17'
+        type: string
+      otp_version:
+        description: 'OTP version'
+        required: false
+        default: '27'
+        type: string
+
+# OBC mapping:
+#   Observable: push / pull_request event
+#   Budget:     mix check exit code (0 = pass, non-zero = fail)
+#   on_pass:    status check green → PR unblocked
+#   on_fail:    status check red → PR blocked + ntfy alert via notify-ntfy.yml
+#
+# Job name must be exactly "check" — branch protection watches this name.
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ inputs.elixir_version }}
+          otp-version: ${{ inputs.otp_version }}
+
+      - name: Restore deps cache
+        uses: actions/cache@v4
+        id: deps-cache
+        with:
+          path: deps
+          key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-
+
+      - name: Restore build cache
+        uses: actions/cache@v4
+        with:
+          path: _build
+          key: ${{ runner.os }}-build-${{ inputs.elixir_version }}-${{ inputs.otp_version }}-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ inputs.elixir_version }}-${{ inputs.otp_version }}-
+
+      - name: Install dependencies
+        if: steps.deps-cache.outputs.cache-hit != 'true'
+        run: mix deps.get
+
+      - name: Run quality gate
+        run: mix check
