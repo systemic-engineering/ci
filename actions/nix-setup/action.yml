@@ -1,0 +1,57 @@
+name: 'Nix Setup'
+description: 'Set up Nix with flakes and caching (for local-like CI)'
+author: 'Reed <reed@systemic.engineer>'
+
+inputs:
+  install-nix:
+    description: 'Install Nix (disable if already installed)'
+    required: false
+    default: 'true'
+  nix-installer:
+    description: 'Nix installer to use (determinate, official)'
+    required: false
+    default: 'determinate'
+  extra-nix-config:
+    description: 'Extra nix.conf options'
+    required: false
+    default: ''
+  enable-cachix:
+    description: 'Enable Cachix caching'
+    required: false
+    default: 'false'
+  cachix-name:
+    description: 'Cachix cache name'
+    required: false
+    default: ''
+  cachix-auth-token:
+    description: 'Cachix auth token (use secrets.CACHIX_AUTH_TOKEN)'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Nix (Determinate)
+      if: inputs.install-nix == 'true' && inputs.nix-installer == 'determinate'
+      uses: DeterminateSystems/nix-installer-action@main
+
+    - name: Install Nix (Official)
+      if: inputs.install-nix == 'true' && inputs.nix-installer == 'official'
+      uses: cachix/install-nix-action@v27
+      with:
+        extra_nix_config: ${{ inputs.extra-nix-config }}
+
+    - name: Set up Magic Nix Cache
+      if: inputs.nix-installer == 'determinate'
+      uses: DeterminateSystems/magic-nix-cache-action@main
+
+    - name: Set up Cachix
+      if: inputs.enable-cachix == 'true' && inputs.cachix-name != ''
+      uses: cachix/cachix-action@v15
+      with:
+        name: ${{ inputs.cachix-name }}
+        authToken: ${{ inputs.cachix-auth-token }}
+
+branding:
+  icon: 'box'
+  color: 'blue'

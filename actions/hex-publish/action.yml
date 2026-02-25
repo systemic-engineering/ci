@@ -1,0 +1,35 @@
+name: 'Hex Publish'
+description: 'Publish an Elixir package to Hex.pm'
+author: 'Reed <reed@systemic.engineer>'
+
+inputs:
+  hex-api-key:
+    description: 'Hex.pm API key (from secrets.HEX_API_KEY)'
+    required: true
+  mix-env:
+    description: 'MIX_ENV to use when publishing (dev required for ex_doc)'
+    required: false
+    default: 'dev'
+  hex-organization:
+    description: 'Hex.pm organization (omit for personal packages)'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Publish to Hex.pm
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.hex-organization }}" ]; then
+          mix hex.publish --organization "${{ inputs.hex-organization }}" --yes
+        else
+          mix hex.publish --yes
+        fi
+      env:
+        MIX_ENV: ${{ inputs.mix-env }}
+        HEX_API_KEY: ${{ inputs.hex-api-key }}
+
+branding:
+  icon: 'upload-cloud'
+  color: 'purple'

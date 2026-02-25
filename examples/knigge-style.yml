@@ -1,0 +1,191 @@
+# Example: Knigge-style comprehensive testing
+# Tests across multiple Elixir/OTP/Alpine combinations
+#
+# Place in: .github/workflows/ci.yml
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CACHE_PREFIX: v1
+
+jobs:
+  test:
+    name: Test (Elixir ${{ matrix.elixir }} / OTP ${{ matrix.otp }})
+    runs-on: ubuntu-latest
+    container: hexpm/elixir:${{ matrix.elixir }}-erlang-${{ matrix.otp }}-alpine-${{ matrix.alpine }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Latest stable
+          - elixir: "1.18.0"
+            otp: "27.0"
+            alpine: "3.20"
+          - elixir: "1.17.3"
+            otp: "27.0"
+            alpine: "3.20"
+
+          # Previous OTP
+          - elixir: "1.17.3"
+            otp: "26.2.5"
+            alpine: "3.19"
+
+          # Minimum supported (adjust as needed)
+          - elixir: "1.16.0"
+            otp: "26.0"
+            alpine: "3.18"
+
+    env:
+      MIX_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache deps/
+        uses: actions/cache@v4
+        with:
+          path: deps/
+          key: ${{ env.CACHE_PREFIX }}-deps-elixir:${{ matrix.elixir }}-otp:${{ matrix.otp }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ env.CACHE_PREFIX }}-deps-elixir:${{ matrix.elixir }}-otp:${{ matrix.otp }}-
+
+      - name: Cache _build/
+        uses: actions/cache@v4
+        with:
+          path: _build/
+          key: ${{ env.CACHE_PREFIX }}-build-elixir:${{ matrix.elixir }}-otp:${{ matrix.otp }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ env.CACHE_PREFIX }}-build-elixir:${{ matrix.elixir }}-otp:${{ matrix.otp }}-
+
+      - name: Install dependencies
+        run: |
+          mix local.rebar --force
+          mix local.hex --force
+          mix deps.get --only test
+
+      - name: Compile
+        run: mix compile --warnings-as-errors
+
+      - name: Test
+        run: mix test
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    container: hexpm/elixir:1.18.0-erlang-27.0-alpine-3.20
+
+    env:
+      MIX_ENV: test
+
+    steps:
+      - name: Install git (required for coveralls.github)
+        run: apk add --no-cache git
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Cache deps/
+        uses: actions/cache@v4
+        with:
+          path: deps/
+          key: ${{ env.CACHE_PREFIX }}-deps-elixir:1.18.0-otp:27.0-${{ hashFiles('**/mix.lock') }}
+
+      - name: Cache _build/
+        uses: actions/cache@v4
+        with:
+          path: _build/
+          key: ${{ env.CACHE_PREFIX }}-build-elixir:1.18.0-otp:27.0-${{ hashFiles('**/mix.lock') }}
+
+      - name: Install dependencies
+        run: |
+          mix local.rebar --force
+          mix local.hex --force
+          mix deps.get --only test
+
+      - name: Run coverage
+        run: mix coveralls.github
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+    container: hexpm/elixir:1.18.0-erlang-27.0-alpine-3.20
+
+    env:
+      MIX_ENV: dev
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache deps/
+        uses: actions/cache@v4
+        with:
+          path: deps/
+          key: ${{ env.CACHE_PREFIX }}-deps-dev-elixir:1.18.0-otp:27.0-${{ hashFiles('**/mix.lock') }}
+
+      - name: Cache _build/
+        uses: actions/cache@v4
+        with:
+          path: _build/
+          key: ${{ env.CACHE_PREFIX }}-build-dev-elixir:1.18.0-otp:27.0-${{ hashFiles('**/mix.lock') }}
+
+      - name: Install dependencies
+        run: |
+          mix local.rebar --force
+          mix local.hex --force
+          mix deps.get --only dev
+
+      - name: Check formatting
+        run: mix format --check-formatted
+
+      - name: Run Credo
+        run: mix credo --strict
+
+  dialyzer:
+    name: Dialyzer
+    runs-on: ubuntu-latest
+    container: hexpm/elixir:1.18.0-erlang-27.0-alpine-3.20
+
+    env:
+      MIX_ENV: dev
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache deps/
+        uses: actions/cache@v4
+        with:
+          path: deps/
+          key: ${{ env.CACHE_PREFIX }}-deps-dev-elixir:1.18.0-otp:27.0-${{ hashFiles('**/mix.lock') }}
+
+      - name: Cache _build/
+        uses: actions/cache@v4
+        with:
+          path: _build/
+          key: ${{ env.CACHE_PREFIX }}-build-dev-elixir:1.18.0-otp:27.0-${{ hashFiles('**/mix.lock') }}
+
+      - name: Cache Dialyzer PLTs
+        uses: actions/cache@v4
+        with:
+          path: .dialyzer/
+          key: ${{ env.CACHE_PREFIX }}-dialyzer-elixir:1.18.0-otp:27.0
+
+      - name: Install dependencies
+        run: |
+          mix local.rebar --force
+          mix local.hex --force
+          mix deps.get --only dev
+
+      - name: Compile
+        run: mix compile --warnings-as-errors
+
+      - name: Run Dialyzer
+        run: mix dialyzer

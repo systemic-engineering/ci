@@ -1,0 +1,57 @@
+name: 'Nix Elixir Test'
+description: 'Run Elixir tests using Nix dev shell (matches local development)'
+author: 'Reed <reed@systemic.engineer>'
+
+inputs:
+  coverage:
+    description: 'Collect test coverage'
+    required: false
+    default: 'false'
+  coverage-tool:
+    description: 'Coverage tool (coveralls.github, coveralls.json, coveralls.html)'
+    required: false
+    default: 'coveralls.github'
+  warnings-as-errors:
+    description: 'Treat compilation warnings as errors'
+    required: false
+    default: 'true'
+  nix-command:
+    description: 'Nix command to run (e.g., "nix develop -c")'
+    required: false
+    default: 'nix develop -c'
+  additional-test-args:
+    description: 'Additional arguments to pass to mix test'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Get dependencies
+      shell: bash
+      run: ${{ inputs.nix-command }} mix deps.get
+
+    - name: Compile
+      shell: bash
+      run: |
+        if [ "${{ inputs.warnings-as-errors }}" = "true" ]; then
+          ${{ inputs.nix-command }} mix compile --warnings-as-errors
+        else
+          ${{ inputs.nix-command }} mix compile
+        fi
+
+    - name: Run tests
+      if: inputs.coverage != 'true'
+      shell: bash
+      run: ${{ inputs.nix-command }} mix test ${{ inputs.additional-test-args }}
+
+    - name: Run tests with coverage
+      if: inputs.coverage == 'true'
+      shell: bash
+      run: ${{ inputs.nix-command }} mix ${{ inputs.coverage-tool }}
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+
+branding:
+  icon: 'check-circle'
+  color: 'purple'

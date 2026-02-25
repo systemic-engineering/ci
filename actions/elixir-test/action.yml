@@ -1,0 +1,58 @@
+name: 'Elixir Test'
+description: 'Run Elixir tests with optional coverage collection'
+author: 'Reed <reed@systemic.engineer>'
+
+inputs:
+  mix-env:
+    description: 'MIX_ENV to use'
+    required: false
+    default: 'test'
+  coverage:
+    description: 'Collect test coverage with ExCoveralls'
+    required: false
+    default: 'false'
+  coverage-tool:
+    description: 'Coverage tool (coveralls.github, coveralls.json, coveralls.html)'
+    required: false
+    default: 'coveralls.github'
+  warnings-as-errors:
+    description: 'Treat compilation warnings as errors'
+    required: false
+    default: 'true'
+  additional-test-args:
+    description: 'Additional arguments to pass to mix test'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Compile
+      shell: bash
+      run: |
+        if [ "${{ inputs.warnings-as-errors }}" = "true" ]; then
+          mix compile --warnings-as-errors
+        else
+          mix compile
+        fi
+      env:
+        MIX_ENV: ${{ inputs.mix-env }}
+
+    - name: Run tests
+      if: inputs.coverage != 'true'
+      shell: bash
+      run: mix test ${{ inputs.additional-test-args }}
+      env:
+        MIX_ENV: ${{ inputs.mix-env }}
+
+    - name: Run tests with coverage
+      if: inputs.coverage == 'true'
+      shell: bash
+      run: mix ${{ inputs.coverage-tool }}
+      env:
+        MIX_ENV: ${{ inputs.mix-env }}
+        GITHUB_TOKEN: ${{ github.token }}
+
+branding:
+  icon: 'check-circle'
+  color: 'green'

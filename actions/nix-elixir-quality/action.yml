@@ -1,0 +1,69 @@
+name: 'Nix Elixir Quality'
+description: 'Run Elixir quality checks using Nix dev shell (matches local development)'
+author: 'Reed <reed@systemic.engineer>'
+
+inputs:
+  format:
+    description: 'Check code formatting'
+    required: false
+    default: 'true'
+  credo:
+    description: 'Run Credo linting'
+    required: false
+    default: 'true'
+  credo-strict:
+    description: 'Run Credo in strict mode'
+    required: false
+    default: 'true'
+  dialyzer:
+    description: 'Run Dialyzer type checking'
+    required: false
+    default: 'false'
+  warnings-as-errors:
+    description: 'Treat compilation warnings as errors'
+    required: false
+    default: 'true'
+  nix-command:
+    description: 'Nix command to run (e.g., "nix develop -c")'
+    required: false
+    default: 'nix develop -c'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Get dependencies
+      shell: bash
+      run: ${{ inputs.nix-command }} mix deps.get
+
+    - name: Compile
+      shell: bash
+      run: |
+        if [ "${{ inputs.warnings-as-errors }}" = "true" ]; then
+          ${{ inputs.nix-command }} mix compile --warnings-as-errors
+        else
+          ${{ inputs.nix-command }} mix compile
+        fi
+
+    - name: Check formatting
+      if: inputs.format == 'true'
+      shell: bash
+      run: ${{ inputs.nix-command }} mix format --check-formatted
+
+    - name: Run Credo
+      if: inputs.credo == 'true'
+      shell: bash
+      run: |
+        if [ "${{ inputs.credo-strict }}" = "true" ]; then
+          ${{ inputs.nix-command }} mix credo --strict
+        else
+          ${{ inputs.nix-command }} mix credo
+        fi
+
+    - name: Run Dialyzer
+      if: inputs.dialyzer == 'true'
+      shell: bash
+      run: ${{ inputs.nix-command }} mix dialyzer
+
+branding:
+  icon: 'shield'
+  color: 'purple'
