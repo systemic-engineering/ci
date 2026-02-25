@@ -1,0 +1,79 @@
+# Example: Hybrid CI - Nix for consistency + traditional for coverage
+# Best of both worlds: local match (Nix) + wide version coverage (matrix)
+#
+# Place in: .github/workflows/ci.yml
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # Primary: Nix-based testing (matches local development exactly)
+  test-nix:
+    name: Test (Nix - Local Match)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: reed/ci/actions/nix-setup@main
+        with:
+          nix-installer: determinate
+
+      - uses: reed/ci/actions/nix-elixir-quality@main
+        with:
+          credo-strict: true
+
+      - uses: reed/ci/actions/nix-elixir-test@main
+        with:
+          coverage: true
+
+  # Secondary: Matrix testing for version compatibility
+  test-matrix:
+    name: Test (Elixir ${{ matrix.elixir }} / OTP ${{ matrix.otp }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Latest stable (should match Nix versions)
+          - elixir: "1.18"
+            otp: "27.0"
+          # Previous stable
+          - elixir: "1.17"
+            otp: "27.0"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: reed/ci/actions/elixir-setup@main
+        with:
+          elixir-version: ${{ matrix.elixir }}
+          otp-version: ${{ matrix.otp }}
+
+      - uses: reed/ci/actions/elixir-test@main
+
+  # Dialyzer: Only run on Nix (slow, needs consistent environment)
+  dialyzer:
+    name: Dialyzer (Nix)
+    runs-on: ubuntu-latest
+    # Only run on main branch or when explicitly requested
+    if: github.ref == 'refs/heads/main' || contains(github.event.pull_request.labels.*.name, 'dialyzer')
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: reed/ci/actions/nix-setup@main
+        with:
+          nix-installer: determinate
+          enable-cachix: true
+          cachix-name: your-project
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - uses: reed/ci/actions/nix-elixir-quality@main
+        with:
+          format: false
+          credo: false
+          dialyzer: true

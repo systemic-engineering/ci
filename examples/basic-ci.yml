@@ -1,0 +1,31 @@
+# Example: Basic CI pipeline using reusable actions
+#
+# Place in: .github/workflows/ci.yml
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: reed/ci/actions/elixir-setup@main
+        with:
+          elixir-version: "1.18"
+          otp-version: "27.0"
+
+      - uses: reed/ci/actions/elixir-test@main
+        with:
+          coverage: true
+
+      - uses: reed/ci/actions/elixir-quality@main
+        with:
+          credo-strict: true

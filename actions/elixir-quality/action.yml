@@ -1,0 +1,73 @@
+name: 'Elixir Quality'
+description: 'Run Elixir quality checks (format, Credo, Dialyzer)'
+author: 'Reed <reed@systemic.engineer>'
+
+inputs:
+  mix-env:
+    description: 'MIX_ENV to use'
+    required: false
+    default: 'dev'
+  format:
+    description: 'Check code formatting'
+    required: false
+    default: 'true'
+  credo:
+    description: 'Run Credo linting'
+    required: false
+    default: 'true'
+  credo-strict:
+    description: 'Run Credo in strict mode'
+    required: false
+    default: 'true'
+  dialyzer:
+    description: 'Run Dialyzer type checking'
+    required: false
+    default: 'false'
+  warnings-as-errors:
+    description: 'Treat compilation warnings as errors'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Compile
+      shell: bash
+      run: |
+        if [ "${{ inputs.warnings-as-errors }}" = "true" ]; then
+          mix compile --warnings-as-errors
+        else
+          mix compile
+        fi
+      env:
+        MIX_ENV: ${{ inputs.mix-env }}
+
+    - name: Check formatting
+      if: inputs.format == 'true'
+      shell: bash
+      run: mix format --check-formatted
+      env:
+        MIX_ENV: ${{ inputs.mix-env }}
+
+    - name: Run Credo
+      if: inputs.credo == 'true'
+      shell: bash
+      run: |
+        if [ "${{ inputs.credo-strict }}" = "true" ]; then
+          mix credo --strict
+        else
+          mix credo
+        fi
+      env:
+        MIX_ENV: ${{ inputs.mix-env }}
+
+    - name: Run Dialyzer
+      if: inputs.dialyzer == 'true'
+      shell: bash
+      run: mix dialyzer
+      env:
+        MIX_ENV: ${{ inputs.mix-env }}
+
+branding:
+  icon: 'shield'
+  color: 'blue'

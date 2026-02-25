@@ -1,0 +1,27 @@
+# Example: Publish to Hex.pm on GitHub release
+#
+# Place in: .github/workflows/release.yml
+#
+# Trigger: When a GitHub release is published (e.g., tag v1.2.3)
+# Requires: HEX_API_KEY secret set in repository settings
+#
+# write-version-file: Set to true if your mix.exs reads version from a `version` file:
+#   @version File.read!("version") |> String.trim()
+#   def project, do: [version: @version, ...]
+
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    name: Publish to Hex.pm
+    uses: systemic-engineer/ci/.github/workflows/hex-publish.yml@main
+    with:
+      elixir-version: "1.18"
+      otp-version: "27.0"
+      write-version-file: true
+    secrets:
+      hex-api-key: ${{ secrets.HEX_API_KEY }}
