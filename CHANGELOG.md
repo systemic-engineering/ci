@@ -7,19 +7,43 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 #### Composite Actions
+- **nix-elixir-docs** - Build ex_doc documentation via Nix dev shell
+  - Runs `nix develop -c mix docs` for local/CI parity
+  - Verifies `doc/index.html` was generated
+  - Configurable warnings-as-errors and output path
+
+- **elixir-docs** - Build ex_doc documentation (traditional, non-Nix)
+  - Runs `mix docs` with configurable MIX_ENV
+  - Same verification and output options as Nix variant
+
 - **hex-publish** - Publish packages to Hex.pm
   - `HEX_API_KEY` passed securely via action input
   - Optional `hex-organization` for scoped/private packages
   - Configurable `mix-env` (defaults to `dev` for `ex_doc` compatibility)
 
 #### Reusable Workflows
-- **hex-publish.yml** - Full release workflow (setup → publish)
+- **docs-ghpages.yml** - Build and deploy ex_doc to GitHub Pages
+  - For projects not published on hex.pm (where HexDocs is unavailable)
+  - Nix-based build with `nix-elixir-docs` action
+  - GitHub Pages deployment via `actions/deploy-pages@v4`
+  - Concurrency control (one deployment at a time)
+  - Proper permissions for Pages + OIDC token
+
+- **docs-check.yml** - Verify documentation builds cleanly
+  - For pull request quality gates
+  - Pairs with `docs-ghpages.yml` (check on PR, deploy on main)
+  - Job name `docs` for branch protection
+
+- **hex-publish.yml** - Full release workflow (setup -> publish)
   - Chains `elixir-setup` + `hex-publish` actions
   - `hex-api-key` secret forwarding via `workflow_call`
   - Optional `write-version-file` for projects that read version from a file
   - Optional organization support
 
 #### Examples
+- **docs-ci.yml** - Documentation CI for Elixir projects
+  - On PRs: verify docs build (quality gate)
+  - On main: build and deploy to GitHub Pages
 - **release.yml** - Publish to Hex.pm on GitHub release published event
 
 #### Dev Tooling

@@ -1,0 +1,56 @@
+name: 'Elixir Docs'
+description: 'Build Elixir documentation (traditional setup, non-Nix)'
+author: 'Reed <reed@systemic.engineer>'
+
+inputs:
+  mix-env:
+    description: 'MIX_ENV to use (dev required for ex_doc)'
+    required: false
+    default: 'dev'
+  warnings-as-errors:
+    description: 'Treat compilation warnings as errors during doc build'
+    required: false
+    default: 'true'
+  output-path:
+    description: 'Path where docs are generated (ex_doc default)'
+    required: false
+    default: 'doc'
+
+outputs:
+  docs-path:
+    description: 'Path to the generated documentation directory'
+    value: ${{ inputs.output-path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Compile
+      shell: bash
+      run: |
+        if [ "${{ inputs.warnings-as-errors }}" = "true" ]; then
+          mix compile --warnings-as-errors
+        else
+          mix compile
+        fi
+      env:
+        MIX_ENV: ${{ inputs.mix-env }}
+
+    - name: Build documentation
+      shell: bash
+      run: mix docs
+      env:
+        MIX_ENV: ${{ inputs.mix-env }}
+
+    - name: Verify docs were generated
+      shell: bash
+      run: |
+        if [ ! -f "${{ inputs.output-path }}/index.html" ]; then
+          echo "::error::Documentation was not generated — ${{ inputs.output-path }}/index.html not found"
+          exit 1
+        fi
+        echo "Documentation generated at ${{ inputs.output-path }}/"
+        echo "$(find "${{ inputs.output-path }}" -type f | wc -l | tr -d ' ') files"
+
+branding:
+  icon: 'book-open'
+  color: 'green'

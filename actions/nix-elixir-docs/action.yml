@@ -1,0 +1,56 @@
+name: 'Nix Elixir Docs'
+description: 'Build Elixir documentation using Nix dev shell (matches local development)'
+author: 'Reed <reed@systemic.engineer>'
+
+inputs:
+  nix-command:
+    description: 'Nix command prefix (e.g., "nix develop -c")'
+    required: false
+    default: 'nix develop -c'
+  warnings-as-errors:
+    description: 'Treat compilation warnings as errors during doc build'
+    required: false
+    default: 'true'
+  output-path:
+    description: 'Path where docs are generated (ex_doc default)'
+    required: false
+    default: 'doc'
+
+outputs:
+  docs-path:
+    description: 'Path to the generated documentation directory'
+    value: ${{ inputs.output-path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Get dependencies
+      shell: bash
+      run: ${{ inputs.nix-command }} mix deps.get
+
+    - name: Compile
+      shell: bash
+      run: |
+        if [ "${{ inputs.warnings-as-errors }}" = "true" ]; then
+          ${{ inputs.nix-command }} mix compile --warnings-as-errors
+        else
+          ${{ inputs.nix-command }} mix compile
+        fi
+
+    - name: Build documentation
+      shell: bash
+      run: ${{ inputs.nix-command }} mix docs
+
+    - name: Verify docs were generated
+      shell: bash
+      run: |
+        if [ ! -f "${{ inputs.output-path }}/index.html" ]; then
+          echo "::error::Documentation was not generated — ${{ inputs.output-path }}/index.html not found"
+          exit 1
+        fi
+        echo "Documentation generated at ${{ inputs.output-path }}/"
+        echo "$(find "${{ inputs.output-path }}" -type f | wc -l | tr -d ' ') files"
+
+branding:
+  icon: 'book-open'
+  color: 'purple'

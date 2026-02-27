@@ -1,0 +1,82 @@
+# Reusable workflow: Build ex_doc and deploy to GitHub Pages
+#
+# For projects not published on hex.pm. Uses GitHub Pages as the
+# documentation hosting platform with ex_doc output.
+#
+# Requires:
+#   - Repository Settings > Pages > Source: "GitHub Actions"
+#   - ex_doc configured in mix.exs
+#   - Nix flake with Elixir dev shell
+#
+# OBC mapping:
+#   Observable: push to main (docs changed)
+#   Budget:     mix docs exit code (0 = pass, non-zero = fail)
+#   on_pass:    docs deployed to GitHub Pages
+#   on_fail:    deploy blocked, ntfy alert (caller's responsibility)
+
+name: Docs
+
+on:
+  workflow_call:
+    inputs:
+      nix-command:
+        description: 'Nix command prefix'
+        required: false
+        default: 'nix develop -c'
+        type: string
+      docs-path:
+        description: 'Path where ex_doc generates output'
+        required: false
+        default: 'doc'
+        type: string
+      warnings-as-errors:
+        description: 'Treat compilation warnings as errors'
+        required: false
+        default: true
+        type: boolean
+
+# Sets permissions for GitHub Pages deployment
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Build documentation
+        uses: systemic-engineering/ci/actions/nix-elixir-docs@main
+        with:
+          nix-command: ${{ inputs.nix-command }}
+          warnings-as-errors: ${{ inputs.warnings-as-errors }}
+          output-path: ${{ inputs.docs-path }}
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ inputs.docs-path }}
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

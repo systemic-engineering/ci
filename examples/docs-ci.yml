@@ -1,0 +1,30 @@
+# Example: Documentation CI for Elixir projects
+#
+# Place in: .github/workflows/docs.yml
+#
+# On PRs: verifies docs build cleanly (gate before merge)
+# On main: builds and deploys docs to GitHub Pages
+#
+# Requires:
+#   - ex_doc configured in mix.exs
+#   - Nix flake with Elixir dev shell
+#   - Repository Settings > Pages > Source: "GitHub Actions"
+
+name: Docs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # On PRs: verify docs build without deploying
+  check-docs:
+    if: github.event_name == 'pull_request'
+    uses: systemic-engineering/ci/.github/workflows/docs-check.yml@main
+
+  # On main: build and deploy to GitHub Pages
+  deploy-docs:
+    if: github.ref == 'refs/heads/main'
+    uses: systemic-engineering/ci/.github/workflows/docs-ghpages.yml@main

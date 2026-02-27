@@ -1,0 +1,49 @@
+# Reusable workflow: Verify ex_doc builds cleanly
+#
+# Use on pull requests to catch documentation errors before merge.
+# Pairs with docs-ghpages.yml which handles deployment on main.
+#
+# OBC mapping:
+#   Observable: pull_request event
+#   Budget:     mix docs exit code
+#   on_pass:    docs build verified, PR unblocked
+#   on_fail:    docs broken, PR blocked
+
+name: Docs Check
+
+on:
+  workflow_call:
+    inputs:
+      nix-command:
+        description: 'Nix command prefix'
+        required: false
+        default: 'nix develop -c'
+        type: string
+      docs-path:
+        description: 'Path where ex_doc generates output'
+        required: false
+        default: 'doc'
+        type: string
+      warnings-as-errors:
+        description: 'Treat compilation warnings as errors'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  docs:
+    name: docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Build documentation
+        uses: systemic-engineering/ci/actions/nix-elixir-docs@main
+        with:
+          nix-command: ${{ inputs.nix-command }}
+          warnings-as-errors: ${{ inputs.warnings-as-errors }}
+          output-path: ${{ inputs.docs-path }}
