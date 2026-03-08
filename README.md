@@ -186,4 +186,4 @@ match that expectation exactly.
 
 ## License
 
-Systemic Engineering License v1.0 — see LICENSE.
+systemic.engineering License v1.0 — see LICENSE.
