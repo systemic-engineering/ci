@@ -35,10 +35,6 @@ on:
         default: true
         type: boolean
 
-permissions:
-  id-token: write
-  contents: read
-
 jobs:
   docs:
     name: docs
