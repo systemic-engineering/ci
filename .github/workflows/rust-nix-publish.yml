@@ -32,10 +32,6 @@ on:
         description: 'Ntfy authentication token for failure alerts'
         required: false
 
-permissions:
-  id-token: write
-  contents: read
-
 jobs:
   publish:
     name: Publish to crates.io
