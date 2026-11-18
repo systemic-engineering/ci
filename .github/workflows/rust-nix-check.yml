@@ -3,6 +3,11 @@ name: Rust (Nix)
 on:
   workflow_call:
     inputs:
+      submodules:
+        description: 'Submodules to check out (actions/checkout): recursive, true or false'
+        required: false
+        default: 'recursive'
+        type: string
       coverage_threshold:
         description: 'Minimum line coverage percentage'
         required: false
@@ -23,6 +28,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.submodules }}
 
       - uses: systemic-engineering/ci/actions/nix-setup@main
 

@@ -10,6 +10,11 @@ name: Rust Publish (Nix)
 on:
   workflow_call:
     inputs:
+      submodules:
+        description: 'Submodules to check out (actions/checkout): recursive, true or false'
+        required: false
+        default: 'recursive'
+        type: string
       crate-name:
         description: 'Which crate to publish (for workspaces)'
         required: true
@@ -37,6 +42,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.submodules }}
 
       - uses: systemic-engineering/ci/actions/nix-setup@main
 

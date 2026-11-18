@@ -14,6 +14,11 @@ name: Docs Check
 on:
   workflow_call:
     inputs:
+      submodules:
+        description: 'Submodules to check out (actions/checkout): recursive, true or false'
+        required: false
+        default: 'recursive'
+        type: string
       nix-command:
         description: 'Nix command prefix'
         required: false
@@ -40,6 +45,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.submodules }}
 
       - uses: DeterminateSystems/nix-installer-action@main
 

@@ -10,6 +10,11 @@ name: Hex Publish
 on:
   workflow_call:
     inputs:
+      submodules:
+        description: 'Submodules to check out (actions/checkout): recursive, true or false'
+        required: false
+        default: 'recursive'
+        type: string
       elixir-version:
         description: 'Elixir version'
         required: false
@@ -41,6 +46,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.submodules }}
 
       - uses: systemic-engineering/ci/actions/elixir-setup@main
         with:
