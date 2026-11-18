@@ -1,0 +1,70 @@
+# Reusable workflow: Publish Rust crate to crates.io via Nix
+#
+# Triggered by downstream release.yml workflows when a GitHub release is published.
+# Extracts version from git tag (v0.1.0 → 0.1.0), writes into Cargo.toml, publishes.
+#
+# Requires: CARGO_REGISTRY_TOKEN secret in calling repository.
+
+name: Rust Publish (Nix)
+
+on:
+  workflow_call:
+    inputs:
+      submodules:
+        description: 'Submodules to check out (actions/checkout): recursive, true or false'
+        required: false
+        default: 'recursive'
+        type: string
+      crate-name:
+        description: 'Which crate to publish (for workspaces)'
+        required: true
+        type: string
+      cargo-toml-path:
+        description: 'Path to the Cargo.toml to version-stamp'
+        required: false
+        default: 'Cargo.toml'
+        type: string
+    secrets:
+      cargo-registry-token:
+        description: 'crates.io API token'
+        required: true
+      NTFY_TOKEN:
+        description: 'Ntfy authentication token for failure alerts'
+        required: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.submodules }}
+
+      - uses: systemic-engineering/ci/actions/nix-setup@main
+
+      - name: Write version from tag into Cargo.toml
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "Publishing version: $VERSION"
+          sed -i "s/^version = .*/version = \"$VERSION\"/" ${{ inputs.cargo-toml-path }}
+
+      - name: Publish crate
+        run: nix develop -c cargo publish -p ${{ inputs.crate-name }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.cargo-registry-token }}
+
+  notify-on-failure:
+    if: failure()
+    needs: [publish]
+    uses: systemic-engineering/ci/.github/workflows/notify-ntfy.yml@main
+    with:
+      repo: ${{ github.repository }}
+      workflow: ${{ github.workflow }}
+      run_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    secrets:
+      NTFY_TOKEN: ${{ secrets.NTFY_TOKEN }}

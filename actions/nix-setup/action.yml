@@ -44,6 +44,8 @@ runs:
     - name: Set up Magic Nix Cache
       if: inputs.nix-installer == 'determinate'
       uses: DeterminateSystems/magic-nix-cache-action@main
+      with:
+        use-flakehub: false
 
     - name: Set up Cachix
       if: inputs.enable-cachix == 'true' && inputs.cachix-name != ''

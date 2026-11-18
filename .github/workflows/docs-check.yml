@@ -14,6 +14,11 @@ name: Docs Check
 on:
   workflow_call:
     inputs:
+      submodules:
+        description: 'Submodules to check out (actions/checkout): recursive, true or false'
+        required: false
+        default: 'recursive'
+        type: string
       nix-command:
         description: 'Nix command prefix'
         required: false
@@ -30,16 +35,24 @@ on:
         default: true
         type: boolean
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   docs:
     name: docs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.submodules }}
 
       - uses: DeterminateSystems/nix-installer-action@main
 
       - uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          use-flakehub: false
 
       - name: Build documentation
         uses: systemic-engineering/ci/actions/nix-elixir-docs@main
