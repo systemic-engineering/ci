@@ -18,6 +18,11 @@ on:
         required: false
         default: ''
         type: string
+      flake_check:
+        description: 'Also run `nix flake check` (the repo''s own flake checks), after the cargo steps'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   check:
@@ -42,3 +47,7 @@ jobs:
       - name: Clippy
         run: nix develop -c cargo clippy --workspace ${{ inputs.features && format('--features {0}', inputs.features) || '' }} -- -D warnings
         continue-on-error: true
+
+      - name: Flake checks
+        if: ${{ inputs.flake_check }}
+        run: nix flake check -L --keep-going
